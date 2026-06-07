@@ -3,67 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
     <title>Unity WebGL Player | ph metr</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
-    <style>
-      body {
-        margin: 0;
-        padding: 0;
-        overflow-x: hidden;
-      }
-
-      #input-container {
-        width: 100%;
-        padding: 15px;
-        background: #f5f5f5;
-        border-bottom: 2px solid #ddd;
-        box-sizing: border-box;
-      }
-
-      .input-field {
-        width: 100%;
-        padding: 12px;
-        margin: 8px 0;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        font-size: 16px;
-        box-sizing: border-box;
-      }
-
-      .input-field:focus {
-        outline: none;
-        border-color: #667eea;
-        box-shadow: 0 0 5px rgba(102, 126, 234, 0.5);
-      }
-
-      #unity-container {
-        width: 100%;
-        height: auto;
-      }
-
-      @media (max-width: 768px) {
-        #input-container {
-          padding: 10px;
-        }
-
-        .input-field {
-          font-size: 16px;
-          padding: 10px;
-        }
-      }
-    </style>
   </head>
   <body>
-    <!-- Input Fields Section (appears BEFORE the game) -->
-    <div id="input-container">
-      <input type="text" id="search-input" class="input-field" placeholder="Search here..." />
-      <input type="text" id="name-input" class="input-field" placeholder="Enter your name..." />
-      <textarea id="message-input" class="input-field" placeholder="Enter message..." rows="3" style="resize: vertical;"></textarea>
-    </div>
-
-    <!-- Unity Game Container -->
     <div id="unity-container" class="unity-desktop">
       <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
       <div id="unity-loading-bar">
@@ -79,6 +23,10 @@
         <div id="unity-build-title">ph metr</div>
       </div>
     </div>
+
+    <!-- Hidden inputs to trigger native keyboard -->
+    <input type="text" id="hidden-text-input" style="position: fixed; top: -9999px; left: -9999px; opacity: 0; z-index: -1;" />
+    <input type="password" id="hidden-password-input" style="position: fixed; top: -9999px; left: -9999px; opacity: 0; z-index: -1;" />
 
     <script>
 
@@ -183,21 +131,92 @@
 
       document.body.appendChild(script);
 
-      // Handle input field interactions
-      document.querySelectorAll('.input-field').forEach(input => {
-        input.addEventListener('focus', function() {
-          console.log('Input focused:', this.id);
-          // Keyboard will appear automatically on mobile
-        });
+      // ===== Keyboard Manager for Input Fields =====
+      var KeyboardManager = {
+        init: function() {
+          console.log('KeyboardManager initialized - listening for input fields');
+          this.observeInputFields();
+        },
 
-        input.addEventListener('blur', function() {
-          console.log('Input blurred:', this.id);
-        });
+        observeInputFields: function() {
+          var self = this;
+          
+          // Watch for dynamically created input fields
+          var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+              if (mutation.addedNodes.length) {
+                mutation.addedNodes.forEach(function(node) {
+                  if (node.nodeType === 1) { // Element node
+                    self.attachKeyboardListeners(node);
+                  }
+                });
+              }
+            });
+          });
 
-        input.addEventListener('input', function() {
-          console.log(this.id + ' value:', this.value);
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true
+          });
+
+          // Check existing input fields
+          this.attachKeyboardListeners(document.body);
+        },
+
+        attachKeyboardListeners: function(element) {
+          var inputs = element.querySelectorAll ? element.querySelectorAll('input, textarea') : [];
+          
+          inputs.forEach((input) => {
+            if (input.dataset.keyboardListenerAttached === 'true') return;
+            
+            input.dataset.keyboardListenerAttached = 'true';
+            
+            input.addEventListener('focus', () => {
+              console.log('Input focused, triggering keyboard for:', input.type);
+              this.triggerKeyboard(input);
+            });
+          });
+
+          // Also check if element itself is an input
+          if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+            if (element.dataset.keyboardListenerAttached !== 'true') {
+              element.dataset.keyboardListenerAttached = 'true';
+              element.addEventListener('focus', () => {
+                console.log('Direct input focused, triggering keyboard for:', element.type);
+                this.triggerKeyboard(element);
+              });
+            }
+          }
+        },
+
+        triggerKeyboard: function(input) {
+          // Use hidden inputs to trigger native keyboard
+          var hiddenInput = document.getElementById('hidden-text-input');
+          var hiddenPassword = document.getElementById('hidden-password-input');
+          
+          if (input.type === 'password') {
+            hiddenPassword.focus();
+            hiddenPassword.click();
+            console.log('Password keyboard triggered');
+          } else {
+            hiddenInput.focus();
+            hiddenInput.click();
+            console.log('Text keyboard triggered');
+          }
+        }
+      };
+
+      // Start keyboard manager when document is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+          KeyboardManager.init();
         });
-      });
+      } else {
+        KeyboardManager.init();
+      }
+
+      // Make it globally accessible
+      window.KeyboardManager = KeyboardManager;
 
     </script>
   </body>
