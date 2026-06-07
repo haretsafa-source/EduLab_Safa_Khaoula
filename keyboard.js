@@ -22,6 +22,7 @@ class CustomKeyboard {
     this.createKeyboardElement();
     this.attachEventListeners();
     this.handleInputFocus();
+    console.log('CustomKeyboard initialized');
   }
 
   createKeyboardElement() {
@@ -60,6 +61,8 @@ class CustomKeyboard {
     header.querySelector('.keyboard-close-btn').addEventListener('click', () => {
       this.close();
     });
+
+    console.log('Keyboard element created');
   }
 
   renderKeys() {
@@ -72,6 +75,7 @@ class CustomKeyboard {
       row.forEach(key => {
         const keyElement = document.createElement('button');
         keyElement.className = 'key';
+        keyElement.type = 'button'; // Prevent form submission
 
         if (key.functional) {
           keyElement.classList.add('functional');
@@ -79,7 +83,8 @@ class CustomKeyboard {
         }
 
         keyElement.textContent = key.display;
-        keyElement.addEventListener('click', () => {
+        keyElement.addEventListener('click', (e) => {
+          e.preventDefault();
           this.handleKeyPress(key);
         });
 
@@ -151,7 +156,10 @@ class CustomKeyboard {
   }
 
   handleKeyPress(key) {
-    if (!this.activeInput) return;
+    if (!this.activeInput) {
+      console.warn('No active input');
+      return;
+    }
 
     if (key.value === 'backspace') {
       const currentValue = this.activeInput.value;
@@ -169,19 +177,37 @@ class CustomKeyboard {
   }
 
   handleInputFocus() {
-    // Select all input fields and textareas on the page
-    const inputs = document.querySelectorAll('input, textarea');
+    // Use a MutationObserver to detect new input fields dynamically
+    const observer = new MutationObserver(() => {
+      this.attachInputListeners();
+    });
 
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    // Initial attachment
+    this.attachInputListeners();
+  }
+
+  attachInputListeners() {
+    const inputs = document.querySelectorAll('input, textarea');
     inputs.forEach(input => {
+      // Skip if already has listener
+      if (input.dataset.keyboardListener === 'true') return;
+
+      input.dataset.keyboardListener = 'true';
+
       input.addEventListener('focus', (e) => {
         this.activeInput = e.target;
+        console.log('Input focused:', e.target);
         if (this.options.autoOpen) {
           this.open();
         }
       });
 
       input.addEventListener('blur', () => {
-        // Don't close immediately to allow clicking on keyboard
         setTimeout(() => {
           if (document.activeElement !== this.keyboardElement && 
               !this.keyboardElement.contains(document.activeElement)) {
@@ -196,6 +222,7 @@ class CustomKeyboard {
     if (this.keyboardElement && !this.isOpen) {
       this.keyboardElement.classList.add('active');
       this.isOpen = true;
+      console.log('Keyboard opened');
     }
   }
 
@@ -204,6 +231,7 @@ class CustomKeyboard {
       this.keyboardElement.classList.remove('active');
       this.isOpen = false;
       this.activeInput = null;
+      console.log('Keyboard closed');
     }
   }
 
@@ -214,7 +242,6 @@ class CustomKeyboard {
   setLanguage(lang) {
     this.options.language = lang;
     this.keyboardElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
-    // Update header text
     const header = this.keyboardElement.querySelector('.keyboard-header');
     header.innerHTML = `
       <span>${lang === 'ar' ? 'لوحة المفاتيح' : 'Keyboard'}</span>
@@ -239,4 +266,5 @@ function initializeKeyboard() {
     keyLayout: 'qwerty',
     autoOpen: true, // Automatically open on input focus
   });
+  console.log('CustomKeyboard instance created: ', window.customKeyboard);
 }
