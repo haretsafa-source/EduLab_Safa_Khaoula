@@ -3,57 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
     <title>Unity WebGL Player | ph metr</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
-    <style>
-      body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-      }
-
-      #unity-container {
-        width: 100vw;
-        height: 100vh;
-        position: relative;
-      }
-
-      /* Mobile keyboard interceptor */
-      .keyboard-interceptor {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 9999;
-        opacity: 0;
-        pointer-events: none;
-      }
-
-      .keyboard-interceptor.active {
-        pointer-events: all;
-      }
-
-      .hidden-input {
-        position: fixed;
-        top: -9999px;
-        left: -9999px;
-        width: 0;
-        height: 0;
-        opacity: 0;
-        z-index: 10000;
-      }
-    </style>
   </head>
   <body>
-    <!-- Hidden input for keyboard trigger -->
-    <input type="text" id="hidden-username-input" class="hidden-input" inputmode="text" />
-    <input type="password" id="hidden-password-input" class="hidden-input" inputmode="password" />
-    <textarea id="hidden-text-input" class="hidden-input"></textarea>
-
-    <!-- Unity Game Container - Full Screen -->
     <div id="unity-container" class="unity-desktop">
       <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
       <div id="unity-loading-bar">
@@ -69,6 +23,10 @@
         <div id="unity-build-title">ph metr</div>
       </div>
     </div>
+
+    <!-- Hidden inputs to trigger native keyboard -->
+    <input type="text" id="hidden-text-input" style="position: fixed; top: -9999px; left: -9999px; opacity: 0; z-index: -1;" />
+    <input type="password" id="hidden-password-input" style="position: fixed; top: -9999px; left: -9999px; opacity: 0; z-index: -1;" />
 
     <script>
 
@@ -173,110 +131,23 @@
 
       document.body.appendChild(script);
 
-    </script>
-
-    <!-- Keyboard Interceptor Script -->
-    <script>
-      console.log('Keyboard interceptor script loaded');
-
-      // Global keyboard manager
+      // ===== Keyboard Manager for Input Fields =====
       var KeyboardManager = {
-        currentInput: null,
-        isKeyboardOpen: false,
-
         init: function() {
-          console.log('KeyboardManager initialized');
-          
-          // Listen for Unity clicks that might trigger input fields
-          this.setupInputDetection();
-          
-          // Setup hidden inputs
-          this.setupHiddenInputs();
-          
-          // Use MutationObserver to detect dynamically created input fields
-          this.observeDOMChanges();
+          console.log('KeyboardManager initialized - listening for input fields');
+          this.observeInputFields();
         },
 
-        setupHiddenInputs: function() {
-          var usernameInput = document.getElementById('hidden-username-input');
-          var passwordInput = document.getElementById('hidden-password-input');
-          var textInput = document.getElementById('hidden-text-input');
-
-          usernameInput.addEventListener('focus', () => {
-            this.isKeyboardOpen = true;
-            console.log('Username input focused - keyboard should appear');
-          });
-
-          passwordInput.addEventListener('focus', () => {
-            this.isKeyboardOpen = true;
-            console.log('Password input focused - keyboard should appear');
-          });
-
-          textInput.addEventListener('focus', () => {
-            this.isKeyboardOpen = true;
-            console.log('Text input focused - keyboard should appear');
-          });
-
-          [usernameInput, passwordInput, textInput].forEach(input => {
-            input.addEventListener('blur', () => {
-              this.isKeyboardOpen = false;
-              console.log('Input blurred - keyboard hidden');
-            });
-          });
-        },
-
-        setupInputDetection: function() {
-          var canvas = document.getElementById('unity-canvas');
-          if (!canvas) return;
-
-          canvas.addEventListener('click', (e) => {
-            console.log('Canvas clicked at:', e.clientX, e.clientY);
-            this.checkForInputFieldsNearClick(e.clientX, e.clientY);
-          });
-
-          canvas.addEventListener('touchend', (e) => {
-            if (e.changedTouches.length > 0) {
-              var touch = e.changedTouches[0];
-              console.log('Canvas touched at:', touch.clientX, touch.clientY);
-              this.checkForInputFieldsNearClick(touch.clientX, touch.clientY);
-            }
-          });
-        },
-
-        checkForInputFieldsNearClick: function(x, y) {
-          // Check if click is on input fields within Unity
-          // This triggers the hidden input to show the keyboard
+        observeInputFields: function() {
+          var self = this;
           
-          var hiddenUsername = document.getElementById('hidden-username-input');
-          var hiddenPassword = document.getElementById('hidden-password-input');
-          var hiddenText = document.getElementById('hidden-text-input');
-
-          // Detect by proximity or you can add specific coordinates
-          // For now, we'll trigger based on common login screen areas
-          
-          console.log('Checking for input fields near click');
-          
-          // Example: if click is on left side (username field area)
-          if (x < window.innerWidth * 0.6) {
-            setTimeout(() => {
-              hiddenUsername.focus();
-              hiddenUsername.click();
-              console.log('Username keyboard triggered');
-            }, 50);
-          }
-        },
-
-        observeDOMChanges: function() {
-          var observer = new MutationObserver((mutations) => {
-            console.log('DOM changes detected');
-            
-            // Check for newly added input fields
-            mutations.forEach((mutation) => {
-              if (mutation.addedNodes.length > 0) {
-                mutation.addedNodes.forEach((node) => {
-                  if (node.tagName === 'INPUT' || node.tagName === 'TEXTAREA') {
-                    console.log('New input field detected:', node);
-                    this.attachKeyboardListener(node);
+          // Watch for dynamically created input fields
+          var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+              if (mutation.addedNodes.length) {
+                mutation.addedNodes.forEach(function(node) {
+                  if (node.nodeType === 1) { // Element node
+                    self.attachKeyboardListeners(node);
                   }
                 });
               }
@@ -287,32 +158,55 @@
             childList: true,
             subtree: true
           });
+
+          // Check existing input fields
+          this.attachKeyboardListeners(document.body);
         },
 
-        attachKeyboardListener: function(input) {
-          input.addEventListener('focus', () => {
-            console.log('Input focused:', input);
-            this.isKeyboardOpen = true;
+        attachKeyboardListeners: function(element) {
+          var inputs = element.querySelectorAll ? element.querySelectorAll('input, textarea') : [];
+          
+          inputs.forEach((input) => {
+            if (input.dataset.keyboardListenerAttached === 'true') return;
+            
+            input.dataset.keyboardListenerAttached = 'true';
+            
+            input.addEventListener('focus', () => {
+              console.log('Input focused, triggering keyboard for:', input.type);
+              this.triggerKeyboard(input);
+            });
           });
 
-          input.addEventListener('blur', () => {
-            this.isKeyboardOpen = false;
-          });
+          // Also check if element itself is an input
+          if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+            if (element.dataset.keyboardListenerAttached !== 'true') {
+              element.dataset.keyboardListenerAttached = 'true';
+              element.addEventListener('focus', () => {
+                console.log('Direct input focused, triggering keyboard for:', element.type);
+                this.triggerKeyboard(element);
+              });
+            }
+          }
         },
 
-        // Function to manually open keyboard for specific field type
-        openKeyboardForField: function(fieldType) {
-          if (fieldType === 'username') {
-            document.getElementById('hidden-username-input').focus();
-            document.getElementById('hidden-username-input').click();
-          } else if (fieldType === 'password') {
-            document.getElementById('hidden-password-input').focus();
-            document.getElementById('hidden-password-input').click();
+        triggerKeyboard: function(input) {
+          // Use hidden inputs to trigger native keyboard
+          var hiddenInput = document.getElementById('hidden-text-input');
+          var hiddenPassword = document.getElementById('hidden-password-input');
+          
+          if (input.type === 'password') {
+            hiddenPassword.focus();
+            hiddenPassword.click();
+            console.log('Password keyboard triggered');
+          } else {
+            hiddenInput.focus();
+            hiddenInput.click();
+            console.log('Text keyboard triggered');
           }
         }
       };
 
-      // Initialize on document ready
+      // Start keyboard manager when document is ready
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
           KeyboardManager.init();
@@ -321,9 +215,9 @@
         KeyboardManager.init();
       }
 
-      // Global access for Unity communication
+      // Make it globally accessible
       window.KeyboardManager = KeyboardManager;
-      console.log('Keyboard manager available as window.KeyboardManager');
+
     </script>
   </body>
 </html>
