@@ -23,11 +23,6 @@
         <div id="unity-build-title">ph metr</div>
       </div>
     </div>
-
-    <!-- Hidden inputs to trigger native keyboard -->
-    <input type="text" id="hidden-text-input" style="position: fixed; top: -9999px; left: -9999px; opacity: 0; z-index: -1;" />
-    <input type="password" id="hidden-password-input" style="position: fixed; top: -9999px; left: -9999px; opacity: 0; z-index: -1;" />
-
     <script>
 
       var container = document.querySelector("#unity-container");
@@ -130,93 +125,6 @@
             };
 
       document.body.appendChild(script);
-
-      // ===== Keyboard Manager for Input Fields =====
-      var KeyboardManager = {
-        init: function() {
-          console.log('KeyboardManager initialized - listening for input fields');
-          this.observeInputFields();
-        },
-
-        observeInputFields: function() {
-          var self = this;
-          
-          // Watch for dynamically created input fields
-          var observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-              if (mutation.addedNodes.length) {
-                mutation.addedNodes.forEach(function(node) {
-                  if (node.nodeType === 1) { // Element node
-                    self.attachKeyboardListeners(node);
-                  }
-                });
-              }
-            });
-          });
-
-          observer.observe(document.body, {
-            childList: true,
-            subtree: true
-          });
-
-          // Check existing input fields
-          this.attachKeyboardListeners(document.body);
-        },
-
-        attachKeyboardListeners: function(element) {
-          var inputs = element.querySelectorAll ? element.querySelectorAll('input, textarea') : [];
-          
-          inputs.forEach((input) => {
-            if (input.dataset.keyboardListenerAttached === 'true') return;
-            
-            input.dataset.keyboardListenerAttached = 'true';
-            
-            input.addEventListener('focus', () => {
-              console.log('Input focused, triggering keyboard for:', input.type);
-              this.triggerKeyboard(input);
-            });
-          });
-
-          // Also check if element itself is an input
-          if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-            if (element.dataset.keyboardListenerAttached !== 'true') {
-              element.dataset.keyboardListenerAttached = 'true';
-              element.addEventListener('focus', () => {
-                console.log('Direct input focused, triggering keyboard for:', element.type);
-                this.triggerKeyboard(element);
-              });
-            }
-          }
-        },
-
-        triggerKeyboard: function(input) {
-          // Use hidden inputs to trigger native keyboard
-          var hiddenInput = document.getElementById('hidden-text-input');
-          var hiddenPassword = document.getElementById('hidden-password-input');
-          
-          if (input.type === 'password') {
-            hiddenPassword.focus();
-            hiddenPassword.click();
-            console.log('Password keyboard triggered');
-          } else {
-            hiddenInput.focus();
-            hiddenInput.click();
-            console.log('Text keyboard triggered');
-          }
-        }
-      };
-
-      // Start keyboard manager when document is ready
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-          KeyboardManager.init();
-        });
-      } else {
-        KeyboardManager.init();
-      }
-
-      // Make it globally accessible
-      window.KeyboardManager = KeyboardManager;
 
     </script>
   </body>
